@@ -1,11 +1,21 @@
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
-class Category {
-    String[] questions;
-    String[] answers;
+// Custom exception to handle invalid category input
+class InvalidCategoryException extends Exception {
+    public InvalidCategoryException(String message) {
+        super(message);
+    }
+}
 
-    public Category(String[] questions, String[] answers) {
+class Category {
+    List<String> questions;
+    List<String> answers;
+
+    public Category(List<String> questions, List<String> answers) {
         this.questions = questions;
         this.answers = answers;
     }
@@ -28,48 +38,86 @@ public class JumbledWordsGame {
     }
 
     public static int gameRound(Category userCategory, int quesIndex, Scanner scanner) {
-        StringBuilder question = new StringBuilder(userCategory.questions[quesIndex]);
+        StringBuilder question = new StringBuilder(userCategory.questions.get(quesIndex));
         shuffleString(question);
 
         System.out.println("\nQuestion: " + question);
         System.out.print("Answer: ");
         String answer = scanner.next().toUpperCase();
 
-        return correctOrIncorrect(userCategory.answers[quesIndex], answer);
+        return correctOrIncorrect(userCategory.answers.get(quesIndex), answer);
+    }
+
+    public static Category loadCategoryFromFile(String category) throws InvalidCategoryException {
+        String filePath = "categories/" + category + ".txt";
+        List<String> questions = new ArrayList<>();
+        List<String> answers = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isQuestion = true;
+            while ((line = reader.readLine()) != null) {
+                if (isQuestion) {
+                    questions.add(line.trim());
+                } else {
+                    answers.add(line.trim());
+                }
+                isQuestion = !isQuestion;
+            }
+
+            if (questions.size() != answers.size()) {
+                throw new InvalidCategoryException("Invalid file format in " + category + ".txt");
+            }
+
+        } catch (FileNotFoundException e) {
+            throw new InvalidCategoryException("Invalid category. Please enter a valid category.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return new Category(questions, answers);
     }
 
     public static void main(String[] args) {
-        // Test data for the game logic
-        Category testCategory = new Category(
-                new String[]{"APPLE", "BANANA", "CHERRY", "MANGO", "GRAPES"},
-                new String[]{"APPLE", "BANANA", "CHERRY", "MANGO", "GRAPES"}
-        );
-
-        System.out.println("\n----JUMBLED WORDS GAME (TEST)----\n");
-
         Scanner scanner = new Scanner(System.in);
+        Category selectedCategory = null;
 
-        // Main gameplay function
+        // Loop until user enters a valid category
+        while (selectedCategory == null) {
+            System.out.println("Choose a category: animals, foods, fruits, anime, cartoons, marvel, sports");
+            System.out.print("Enter a category: ");
+            String category = scanner.next().toLowerCase();
+
+            try {
+                selectedCategory = loadCategoryFromFile(category);
+            } catch (InvalidCategoryException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+
+        System.out.println("\n----JUMBLED WORDS GAME----\n");
+
         int score = 0;
         int life = 3;
 
-        // Array for the question indices
-        int[] quesIndexArray = {0, 1, 2, 3, 4};
-
-        // Shuffle the question indices
+        // Shuffle question indices
         Random random = new Random();
-        for (int i = quesIndexArray.length - 1; i > 0; i--) {
+        List<Integer> quesIndexArray = new ArrayList<>();
+        for (int i = 0; i < selectedCategory.questions.size(); i++) {
+            quesIndexArray.add(i);
+        }
+        for (int i = quesIndexArray.size() - 1; i > 0; i--) {
             int j = random.nextInt(i + 1);
-            int temp = quesIndexArray[i];
-            quesIndexArray[i] = quesIndexArray[j];
-            quesIndexArray[j] = temp;
+            int temp = quesIndexArray.get(i);
+            quesIndexArray.set(i, quesIndexArray.get(j));
+            quesIndexArray.set(j, temp);
         }
 
         // Game loop
         int i = 0;
-        while (score < 5 && life > 0 && i < quesIndexArray.length) {
-            int quesIndex = quesIndexArray[i];
-            int result = gameRound(testCategory, quesIndex, scanner);
+        while (score < 10 && life > 0 && i < quesIndexArray.size()) {
+            int quesIndex = quesIndexArray.get(i);
+            int result = gameRound(selectedCategory, quesIndex, scanner);
 
             if (result == 0) {
                 System.out.println("Correct!");
@@ -83,7 +131,7 @@ public class JumbledWordsGame {
             i++;
         }
 
-        if (score == 5) {
+        if (score == 10) {
             System.out.println("Congratulations! You Won The Game");
         } else {
             System.out.println("Game Over. Better Luck Next Time!");
