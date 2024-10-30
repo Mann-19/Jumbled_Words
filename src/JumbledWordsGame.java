@@ -11,15 +11,6 @@ class InvalidCategoryException extends Exception {
     }
 }
 
-class Category {
-    List<String> questions;
-    List<String> answers;
-
-    public Category(List<String> questions, List<String> answers) {
-        this.questions = questions;
-        this.answers = answers;
-    }
-}
 
 public class JumbledWordsGame {
 
